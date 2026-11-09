@@ -117,7 +117,7 @@ A: 看 INDEX.md 是否有源链接；有链接就能按 kb-builder.md 让 AI 现
 │   └── 新编大学英语（第四版）/…
 ├── tools/                 # 建库流水线：目录爬取 / 图片下载 / 质量校验
 ├── mcp/                   # unipus-mcp：浏览器自动化 MCP 服务端（15 工具）+ 两阶段批量执行器
-└── docs/                  # MAINTAINER.md（接手入口）、UPSTREAM.md（上游调研）、转录队列、设计存档
+└── docs/                  # MAINTAINER.md（接手入口）、UPSTREAM.md（上游调研）、task-requirements.md（必修清单）、转录队列、设计存档
 ```
 
 > **接手维护？先读 [docs/MAINTAINER.md](docs/MAINTAINER.md)**：架构、数据格式、状态机、改哪里、怎么验证，一页摸清。

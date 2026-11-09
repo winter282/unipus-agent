@@ -24,13 +24,18 @@ async function ensureBrowser() {
   if (ctx && page && !page.isClosed()) return page;
   const launch = (channel) => chromium.launchPersistentContext(PROFILE_DIR, {
     channel, headless: false, viewport: null,
-    args: ["--window-size=1380,900", "--disable-blink-features=AutomationControlled"],
+    chromiumSandbox: true,   // 不用 Playwright 默认的 --no-sandbox（Edge 会弹「不受支持的标志」警告）
+    args: ["--window-size=1380,900"],
   });
   try {
     ctx = await launch("chrome");
   } catch {
     ctx = await launch("msedge");
   }
+  // 不用 --disable-blink-features 启动参数（Edge 同样弹「不受支持的标志」），改在页面内抹掉 webdriver 标记
+  await ctx.addInitScript(() => {
+    Object.defineProperty(Object.getPrototypeOf(navigator), "webdriver", { get: () => undefined });
+  });
   ctx.on("page", (p) => { page = p; });
   page = ctx.pages()[0] || (await ctx.newPage());
   if (process.env.UNIPUS_HIDDEN === "1") await setWindowState(page, "minimized");
