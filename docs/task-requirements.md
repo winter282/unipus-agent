@@ -79,7 +79,54 @@
 - **重做会清空该练习的全部答案**，需整页重填；平台按「最高一次成绩」计。
 - 结论：知识库命中题可靠；AI 兜底可用于 1/3/6/8 的 60% 过关线，但不要假设全对。
 
-## 5. 使用建议
+## 5. 全量跑批记录（2026-11-09 · Unit 1/3/6/8）
+
+用户口径：Unit 2/4/5/7 不做；Vocabulary 全部跳过；其余必修**全部提交（含 Unit test）**。
+
+| Unit | 必修 | 已完成 | 未做 | 得分 |
+|---|---|---|---|---|
+| 1 | 6 | 5 | 1-2 Vocabulary（跳过） | Ex1~4 + Unit test 全 100 |
+| 3 | 7 | 6 | 3-1 Vocabulary（跳过） | Ex1~5 + Unit test（45/45）全 100 |
+| 6 | 6 | 5 | 6-2 Vocabulary（跳过） | Ex1~4 + Unit test（45/45）全 100 |
+| 8 | 8 | 7 | 8-2 Vocabulary（跳过） | Ex1~6 全 100；Unit test 97.8（44/45） |
+
+**本次踩到的坑**
+
+1. **课件域 SSO 失效的新形态**：不是跳到登录页，而是
+   `ucontent.unipus.cn/cas-auth/login/...&ticket=ST-...` 直接回 `Forbidden / Login failed out of limit.`。
+   `status` 仍是 `loggedIn:true`（uai 域自己的 jwt 还在）。清 ucontent cookie 无效；
+   **清 `sso.unipus.cn` 的 TGC + `.unipus.cn` 的 jwt，重登一次**立刻恢复。判据：同账号在普通浏览器能进课件 → 本地登录态脏。
+2. **驱动接口只认 query 参数**：`POST /nav`、`/open-course`、`/click-row` 的字段必须放 URL 查询串，放 JSON body 会得到 `q.url === undefined`（只有 `/eval`、`/fill` 从 body 取）。
+3. **弹窗会吃掉点击**：课件页首屏常有「本单元学习时间 / 是否必修」确认框，挡住了「下一题」。操作前先 `click 我知道了`。
+4. **`click-row` 不识别必修标记**：同名任务（如 `Exercise-1`）先按小节顺序编号，必须先扫一遍 `{title,nth,sec,req}` 再定位，否则会点到 6-1 的选修题。
+5. **知识库两处错**：Unit 8 Active reading 2 First reading 第 7 题应为 D（已改）；Unit 8 Unit test 第 45 题应为 B（courageous），第 19 题 `endeavour / endeavours` 两种形式平台都判错（疑似判分 bug，放弃追）。
+
+## 6. 账号内另两本书（2026-11-09 扫描，未作答）
+
+### 6.1 新标准大学英语（第二版）视听说3 — 200 个任务全部必修
+
+| Unit | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 合计 |
+|---|---|---|---|---|---|---|---|---|---|
+| 必修 | 26 | 25 | 28 | 25 | 23 | 25 | 25 | 23 | **200** |
+
+- 每单元固定结构：Inside view（Conversation 1-1~2-5）→ Outside view（Watching and understanding-1~5）→ Listening in（News report-1/2、Passage 1/2 各 1-2）→ Presentation skills（Learning / Practice）→ Pronunciation（3~6 个语音练习）→ Unit test。
+- **时间限制：任务级没有**。「学习要求」页 8 个单元全是「无限制 - 无限制」，无开始/截止日期；单元过关条件 0%（只要求完成）。
+- **成绩统计方式：首次成绩**（与综合3 的「最高一次成绩」相反，错一次就定分，重做无效）。
+- 实测倒计时：Conversation 1-1（`00:00/01:33`）、Watching and understanding-1（`00:00/00:41`）、News report-1（无时间元素）、Passage 1-1（`00:00/03:30`）、Unit test（`00:16`）——**都是音频时长，没有限时器**。Presentation skills / Pronunciation 未测。
+- **不能自动作答复的原因**：`knowledge/` 无这本书；页面只有 `Words & tips`（生词+文化注释），**没有听力原文**；`<video>/<audio>` 也没有 `<track>` 字幕轨。听力题无答案来源，硬做就是瞎猜，且首次成绩不可挽回。
+
+### 6.2 新视野大学英语（第三版）视听说思政数字课程3 — 391 个任务，122 个必修
+
+| Unit | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 合计 |
+|---|---|---|---|---|---|---|---|---|---|
+| 必修/总数 | 14/52 | 15/50 | 16/49 | 14/47 | 17/48 | 15/46 | 15/49 | 16/50 | **122/391** |
+
+必修集中在：`Sharing · Practice-2~N`、`Listening · Use the skills`、`More practice in listening`（Short conversations / Long conversation / Passages-1/2 / News-1/2）、`Unit test`。
+章节名与 `knowledge/新视野大学英语（第三版）/新视野大学英语 视听说教程3.md` 一一对应，有答案可查。
+
+> 用户 2026-11-09 明确：**思政版不用管**，视听说3 暂不做。
+
+## 7. 使用建议
 
 1. 每单元先复扫一遍再排任务：`req === '必修'` 的才进队列。
 2. 1/3/6/8：优先保客观题正确率，Unit test 单独处理（先看是否限时/监考）。

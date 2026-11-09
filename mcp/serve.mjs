@@ -269,6 +269,21 @@ async function handle(cmd, q, body) {
       const p = await ensureBrowser();
       return { ok: await setWindowState(p, q.action === "show" ? "normal" : "minimized"), state: q.action };
     }
+    case "cookies": {
+      // 只看/只清 cookie：q.domain 子串过滤，q.clear=1 时把这些 cookie 置为过期
+      const p = await ensureBrowser();
+      const cs = await ctx.cookies();
+      const hits = cs.filter((c) => c.domain.includes(q.domain || ""));
+      if (q.clear === "1") {
+        await ctx.addCookies(hits.map((c) => ({ ...c, expires: 0 })));
+      }
+      return {
+        ok: true,
+        matched: hits.map((c) => `${c.domain} ${c.name}`),
+        domains: [...new Set(cs.map((c) => c.domain))],
+        cleared: q.clear === "1",
+      };
+    }
     case "kb": {
       const KB_DIR = pjoin(SKILL_ROOT, "knowledge");
       const hits = [];
