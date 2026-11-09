@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CODE="$1"; SERIES="$2"; BOOK="$3"
-NODE="${NODE_BIN:-C:/Users/hanbi/.workbuddy-ai/binaries/node/versions/22.22.2-2/node.exe}"
+NODE="${NODE_BIN:-node}"
 PY="${PY_BIN:-python}"
 
 URL=$("$PY" - "$SERIES" "$BOOK" <<'EOF'

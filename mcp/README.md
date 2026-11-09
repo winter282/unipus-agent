@@ -3,6 +3,8 @@
 U校园（U校园AI版 uai.unipus.cn）浏览器自动化 MCP 服务端。从 [unipus-agent](../SKILL.md) 技能的
 真机校准脚本移植而来，供 AI 宿主（ZCode 等）以 MCP 工具调用，替代「逐次内联 evaluate」的低效模式。
 
+> 接手维护先读 [../docs/MAINTAINER.md](../docs/MAINTAINER.md)；本目录与 `serve.mjs` 是两套并行实现，改动需同步。
+
 ## 工具一览
 
 | 工具 | 作用 | 备注 |
@@ -15,12 +17,23 @@ U校园（U校园AI版 uai.unipus.cn）浏览器自动化 MCP 服务端。从 [u
 | `unipus_open_course` | 点教材名进教程详情 | 片段匹配 + nth |
 | `unipus_list_tasks` | 单元任务目录（含状态） | 可先切 Unit |
 | `unipus_open_task` | 打开任务（courseware） | 支持 hash 直达；UI 点击无效自动降级 JS 直点 |
-| `unipus_extract` | 提取题目 JSON | 内容就绪轮询，直取不再为空 |
+| `unipus_click` | 按可见文本点击 | 子练习页签 / 选择题选项 / 状态按钮，默认 exact |
+| `unipus_extract` | 提取题目 JSON | v2：支持无 radio 的可点选项选择题 |
 | `unipus_fill` | 逐空回填 + 回读复核 | ≥1.5s 抖动节流；**绝不提交** |
 | `unipus_submit` | 点「提 交」→「确 定」 | **唯一提交入口**，需 confirm:true |
 | `unipus_stay` | 挂机刷时长（≤4 分钟/次） | 自动恢复前台（时长统计检测可见性），心跳走 stderr |
 | `unipus_window` | 浏览器窗口前/后台切换 | |
 | `unipus_kb_search` | 本地知识库 grep | 题目数据不出境 |
+
+## 批量执行器（runner.py）两阶段
+
+```bash
+MODE=fill   python runner.py   # 默认：回填 + 回读校验，写 _review.json / _review.md，不提交
+MODE=submit python runner.py   # 主人核对后：重开任务 → review_gate 比对 → 全绿才提交
+```
+
+`DO_SUBMIT` 默认 `0`；`DO_SUBMIT=1` 仅在 `MODE=fill` 下恢复旧单阶段行为（回滚用）。
+课程 URL 用 `DETAIL_URL` 覆盖，不再写死在代码里。
 
 ## 纪律（与 SKILL.md 红线一致）
 

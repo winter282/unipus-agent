@@ -12,3 +12,7 @@ credentials*.yaml
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Python 字节码
+__pycache__/
+*.pyc

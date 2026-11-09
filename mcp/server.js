@@ -311,7 +311,7 @@ server.registerTool(
   },
   async () => {
     const p = await ensureBrowser();
-    const data = await p.evaluate(scriptFn("extract_questions.js"));
+    const data = await p.evaluate(scriptFn("extract_questions_v2.js"));
     return { content: [{ type: "text", text: JSON.stringify(data) }] };
   },
 );
@@ -332,13 +332,13 @@ server.registerTool(
     const results = [];
     const entries = Object.entries(answers).sort((a, b) => Number(a[0]) - Number(b[0]));
     for (const [idx, answer] of entries) {
-      const r = await p.evaluate(scriptFn("fill_answers.js"), { index: Number(idx), answer, dryRun });
+      const r = await p.evaluate(scriptFn("fill_answers_v2.js"), { index: Number(idx), answer, dryRun });
       results.push({ index: Number(idx), ...r });
       if (!dryRun) await sleep(jitter(1600));
     }
     let verify = null;
     if (!dryRun) {
-      const data = await p.evaluate(scriptFn("extract_questions.js"));
+      const data = await p.evaluate(scriptFn("extract_questions_v2.js"));
       verify = data.questions.map((q) => ({
         no: q.no, index: q.index,
         expected: answers[String(q.index)] ?? null, actual: q.value,
@@ -372,7 +372,7 @@ server.registerTool(
       if (await clickByText(p, t, { exact: true })) { confirmClicked = true; break; }
     }
     await sleep(3500);
-    const data = await p.evaluate(scriptFn("extract_questions.js"));
+    const data = await p.evaluate(scriptFn("extract_questions_v2.js"));
     await closeKnownDialog(p);
     const pageText = await p.evaluate(() => document.body.innerText.slice(0, 2000));
     return {
@@ -421,7 +421,7 @@ server.registerTool(
     },
   },
   async ({ query, book, maxLines = 60 }) => {
-    const { readdirSync, statSync } = await import("node:fs");
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
     const { join: pjoin } = await import("node:path");
     const KB_DIR = pjoin(SKILL_ROOT, "knowledge");
     const hits = [];

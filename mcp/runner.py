@@ -13,11 +13,16 @@ except Exception:
 
 HERE = os.path.dirname(os.path.abspath(__file__))   # mcp/ 目录（不依赖 cwd）
 BASE = "http://127.0.0.1:8791"
-DETAIL = "https://uai.unipus.cn/app/cmgt/resource-detail/20001198340"
+DETAIL = os.environ.get("DETAIL_URL", "https://uai.unipus.cn/app/cmgt/resource-detail/20001198340")
 STAY_MIN = float(os.environ.get("STAY_MIN", "5"))
 ONLY = os.environ.get("ONLY", "").strip()          # 只跑匹配的子串（调试用）
 LIMIT = int(os.environ.get("LIMIT", "0"))          # 最多跑几个任务（0=不限）
-DO_SUBMIT = os.environ.get("DO_SUBMIT", "1") != "0"
+# 两阶段：fill=只填不交（默认）；submit=只提交经过闸门复核的 filled 任务。
+# DO_SUBMIT=1 仅在 MODE=fill 时恢复旧的单阶段行为（回滚用），不作为默认。
+MODE = os.environ.get("MODE", "fill").strip().lower()
+DO_SUBMIT = os.environ.get("DO_SUBMIT", "0") != "0"
+REVIEW_FILE = os.path.join(HERE, "_review.json")
+REVIEW_MD = os.path.join(HERE, "_review.md")
 PREFLIGHT = os.environ.get("PREFLIGHT", "0") == "1"
 PF_ONLY = os.environ.get("PF_ONLY", "").strip()   # 预检时只看匹配的子串（空=全部 fields 任务）
 STATE_FILE = os.environ.get("STATE_FILE", os.path.join(HERE, "_run_state.json"))
@@ -30,6 +35,79 @@ def _log(msg):
     print(line, flush=True)
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(line + "\n")
+
+# ---------- 提交闸门（纯函数，可单测，不import浏览器） ----------
+def _norm(s):
+    return re.sub(r"\s+", " ", (s or "")).strip()
+
+
+def review_gate(answers, current, has_submit):
+    """提交前复核：页面当前值必须与主人核对过的审核单逐题一致。
+
+    answers    审核单里的答案列表（按 index 顺序）
+    current    extract() 返回的 questions，元素含 index/type/value
+    has_submit 页面上是否仍有可见「提 交」按钮
+    返回 (ok, issues)；issues 为空才算通过。
+    """
+    issues = []
+    if not has_submit:
+        issues.append("页面无提交按钮（可能已提交或该题型无提交键）")
+    if len(current) != len(answers):
+        issues.append(f"题数不一致：平台 {len(current)} / 审核单 {len(answers)}")
+        return False, issues
+    for i, q in enumerate(current):
+        val = q.get("value") or ""
+        want = answers[i] if i < len(answers) else None
+        if want is None:
+            issues.append(f"#{i}: 审核单缺答案")
+        elif not val.strip():
+            issues.append(f"#{i}: 页面值为空")
+        elif q.get("type") == "essay":
+            if _norm(val) != _norm(want):
+                issues.append(f"#{i}: essay 内容与审核单不一致")
+        elif val != want:
+            issues.append(f"#{i}: 期望 {want!r} 实际 {val!r}")
+    return (not issues), issues
+
+
+# ---------- 审核单（fill 阶段产出，submit 阶段消费） ----------
+def load_review():
+    if not os.path.exists(REVIEW_FILE):
+        return []
+    try:
+        return json.load(open(REVIEW_FILE, encoding="utf-8"))
+    except Exception as e:
+        _log(f"!! 审核单读取失败（按空处理）: {e}")
+        return []
+
+
+def record_review(item, answers, verify):
+    rows = [r for r in load_review() if r.get("key") != item["key"]]
+    rows.append({
+        "key": item["key"], "unit": item["unit"], "section": item["section"],
+        "title": item["title"], "nth": item["nth"],
+        "answers": answers, "verify": verify,
+        "filledAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
+    json.dump(rows, open(REVIEW_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    write_review_md(rows)
+
+
+def write_review_md(rows):
+    lines = ["# 待提交审核单", "",
+             "> 核对无误后运行 `MODE=submit python mcp/runner.py` 触发受闸门保护的自动提交。", "",
+             "| 任务 | 题数 | 回读校验 | 填写时间 |", "| --- | --- | --- | --- |"]
+    for r in rows:
+        ok = all(v.get("ok") for v in (r.get("verify") or []))
+        lines.append(f"| {r['key']} | {len(r.get('answers') or [])} | {'✅ 全绿' if ok else '⚠️ 有差异'} | {r['filledAt']} |")
+    lines += ["", "## 明细", ""]
+    for r in rows:
+        lines += [f"### {r['key']}", "", "| # | 答案 | 页面回读 | 结果 |", "| --- | --- | --- | --- |"]
+        for v in (r.get("verify") or []):
+            lines.append(f"| {v.get('index')} | {(v.get('expected') or '')[:80]} | {(v.get('actual') or '')[:80]} | {'✅' if v.get('ok') else '❌'} |")
+        lines.append("")
+    open(REVIEW_MD, "w", encoding="utf-8").write("\n".join(lines))
+
 
 def api(cmd, body=None, timeout=180, **q):
     url = BASE + "/" + cmd
@@ -186,11 +264,12 @@ def _page_url():
     except Exception:
         return ""
 
-def do_fields(answers, qs):
+def do_fields(answers, qs, item=None):
     if "sso.unipus.cn" in _page_url():
         _log("   [fields] 页面停在 SSO 登录页 -> 中止（不提交）")
         return "sso"
     idx, step = 0, 0
+    verifies = []
     while True:
         step += 1
         if not qs:
@@ -223,6 +302,7 @@ def do_fields(answers, qs):
                 _log(f"   [fields] step{step}: 回填 {n} 题 allOk=False")
         else:
             _log(f"   [fields] step{step}: 回填 {n} 题 allOk={ok}")
+        verifies.extend(fr.get("verify") or [])
         if not ok:
             bad = [v for v in (fr.get("verify") or []) if not v.get("ok")]
             _log("   [fields] 校验不通过: " + json.dumps(bad, ensure_ascii=False)[:500])
@@ -240,7 +320,11 @@ def do_fields(answers, qs):
         _log("   [fields] 页面在 SSO 登录页 -> 不提交")
         return "sso"
     if not DO_SUBMIT:
-        _log("   [fields] DO_SUBMIT=0，跳过提交")
+        if item is not None:
+            record_review(item, answers, verifies)
+            _log("   [fields] 已填未提交，审核单写入 _review.json / _review.md（核对后 MODE=submit）")
+        else:
+            _log("   [fields] DO_SUBMIT=0，跳过提交")
         return "filled"
     if not evaljs(SUBMIT_JS):
         _log("   [fields] 页面无提交按钮 -> 视为完成")
@@ -357,11 +441,56 @@ def build_queue():
                           "nth": nth, "mode": spec["mode"], "answers": spec.get("answers", [])})
     return q
 
+def submit_reviewed():
+    """MODE=submit：只提交审核单里、状态仍为 filled 的任务，且必须先过 review_gate。"""
+    state = {}
+    if os.path.exists(STATE_FILE):
+        state = json.load(open(STATE_FILE, encoding="utf-8"))
+    rows = load_review()
+    todo = [r for r in rows if state.get(r.get("key")) == "filled"]
+    _log(f"===== 提交阶段：审核单 {len(rows)} 条，待提交 {len(todo)} 条 =====")
+    done = 0
+    for r in todo:
+        k = r["key"]
+        if ONLY and ONLY not in k:
+            continue
+        if LIMIT and done >= LIMIT:
+            _log("达到 LIMIT，停止")
+            break
+        _log(f"\n=== 提交 {k} ===")
+        item = {"key": k, "unit": r["unit"], "section": r["section"],
+                "title": r["title"], "nth": r["nth"], "answers": r.get("answers") or []}
+        qs = open_task(item, need_qs=True)
+        if not qs:
+            _log("   打开任务失败 -> 保留 filled，不提交")
+            continue
+        ok, issues = review_gate(item["answers"], qs, bool(evaljs(SUBMIT_JS)))
+        if not ok:
+            _log("   闸门拒绝: " + "; ".join(issues)[:300])
+            state[k] = "gatefail"
+            json.dump(state, open(STATE_FILE, "w", encoding="utf-8"), ensure_ascii=False)
+            continue
+        sr = api("submit", timeout=150)
+        sig = sr.get("successSignal")
+        gone = not sr.get("hasSubmitAfter")
+        txt = (sr.get("pageText") or "").replace("\n", " ")[:150]
+        _log(f"   [submit] successSignal={sig} hasSubmitAfter={sr.get('hasSubmitAfter')} | {txt}")
+        state[k] = "submitted" if (sig or gone) else "submit?"
+        json.dump(state, open(STATE_FILE, "w", encoding="utf-8"), ensure_ascii=False)
+        done += 1
+        stay(STAY_MIN)
+    _log(f"===== 提交阶段结束，本轮提交 {done} 个 =====")
+
+
 def main():
+    if MODE not in ("fill", "submit"):
+        raise SystemExit(f"未知 MODE={MODE!r}（只接受 fill / submit）")
     if PREFLIGHT:
         return preflight()
+    if MODE == "submit":
+        return submit_reviewed()
     q = build_queue()
-    _log(f"===== 队列 {len(q)} 个自动任务 | STAY={STAY_MIN}min | SUBMIT={DO_SUBMIT} =====")
+    _log(f"===== 队列 {len(q)} 个自动任务 | STAY={STAY_MIN}min | MODE={MODE} | SUBMIT={DO_SUBMIT} =====")
     state = {}
     if os.path.exists(STATE_FILE):
         state = json.load(open(STATE_FILE, encoding="utf-8"))
@@ -390,7 +519,7 @@ def main():
             elif item["mode"] == "read":
                 res = do_read()
             else:
-                res = do_fields(item["answers"], qs0)
+                res = do_fields(item["answers"], qs0, item)
             state[k] = res
             json.dump(state, open(STATE_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
             if res in ("ok", "submitted", "submit?", "nosubmit", "filled", "noq"):

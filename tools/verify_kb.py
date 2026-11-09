@@ -68,7 +68,15 @@ KNOWN_SECTIONS = {
 }
 
 # XXX 白名单：教材范文本身用 XXX 作占位（XXX Road / XXX University / Room XXX 等），不算转录占位符
-PLACEHOLDER = re.compile(r"(待补充|TODO|TBD|(?<!Room )(?<![0-9X])XXX(?![0-9X])(?!\s*(?:Road|Street|Avenue|University|School|College|Company|Dormitory|Building|graduates|in your company))|占位|＼width|[一-鿿]{0,2}略）$)")
+PLACEHOLDER = re.compile(
+    r"(待补充|TODO|TBD"
+    # XXX 罗马数字（XXXI / XXXV）与参考文献编号不算占位
+    r"|(?<!Room )(?<![0-9XIVLCDM])XXX(?![0-9XIVLCDM])"
+    r"(?!\s*(?:Road|Street|Avenue|University|School|College|Company|Dormitory|Building|graduates|in your company))"
+    r"|占位|＼width"
+    # 「（略）」才是省略标记；「（策略）」这类词尾不算
+    r"|[（(]\s*略\s*[）)]\s*$)"
+)
 ANSWER_LINE = re.compile(r"^\s*(\d+[)、.])\s*(.+)$")
 
 

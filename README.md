@@ -1,10 +1,11 @@
 # 🎓 unipus-agent — 让 AI 替你完成 U校园作业
 
-> **一个给 AI 用的 U校园（Unipus AI版）自动作答技能包**：内置 21 个系列 / 约 200 本教材的答案知识库，
+> **一个给 AI 用的 U校园（Unipus AI版）自动作答技能包**：索引 21 个系列 / 200 个教材条目，
+> 其中 **32 本已逐屏转录入库**（6.6MB Markdown，其余条目仅备答案源链接）；
 > AI 自动定位作业 → 检索答案 → 三重核查 → 回填页面 → 挂机刷学习时长。
 > 安全设计：**默认只填不提交**，每次都先问过你。
 
-![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-U%E6%A0%A1%E5%9B%ADAI%E7%89%88-blue) ![Textbooks](https://img.shields.io/badge/%E6%95%99%E6%9D%90%E8%A6%86%E7%96%96-21%E7%B3%BB%E5%88%97%2F200%E6%9C%AC-orange) ![AI Native](https://img.shields.io/badge/design-AI%20Native-9cf) ![Version](https://img.shields.io/badge/version-0.1.0-yellow)
+![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-U%E6%A0%A1%E5%9B%ADAI%E7%89%88-blue) ![Textbooks](https://img.shields.io/badge/%E5%B7%B2%E8%BD%AC%E5%BD%95-32%E6%9C%AC%2F200%E6%9D%A1%E7%9B%AE-orange) ![AI Native](https://img.shields.io/badge/design-AI%20Native-9cf) ![Version](https://img.shields.io/badge/version-0.1.0-yellow)
 
 ## ✨ 它能做什么
 
@@ -47,7 +48,7 @@ evaluate 语法，零依赖）。任何能操作浏览器、能读本地文件�
 | 支持 Agent Skills 标准（Claude Code / ZCode / Codex CLI…） | 整个目录拷进技能目录即装即用（`~/.claude/skills/unipus` 或 `~/.agents/skills/unipus`） |
 | 有规则文件但无技能机制（Cursor / Cline / Windsurf…） | 把 [agent-integration.md](references/agent-integration.md) 里的现成片段粘进 `AGENTS.md` / `.cursor/rules` |
 | 裸 LLM / 自研 agent / API 编排 | SKILL.md 进 system prompt + 挂任意浏览器 MCP；或直接跑 [scripts/playwright-runner.example.js](scripts/playwright-runner.example.js)（纯 Node + Playwright，无需任何 agent） |
-| 想用 MCP 工具替代「逐次内联 evaluate」 | 启动 [mcp/](mcp/README.md)（unipus-mcp，13 个工具），注册进宿主的 `mcp.servers` 即可 |
+| 想用 MCP 工具替代「逐次内联 evaluate」 | 启动 [mcp/](mcp/README.md)（unipus-mcp，15 个工具），注册进宿主的 `mcp.servers` 即可 |
 
 **环境要求**：任意一种浏览器自动化（独立 Playwright / 浏览器类 MCP / 宿主内置浏览器）+
 本地文件读取；Python 3.10+ 仅知识库建库工具需要。完整能力清单与各工具映射见
@@ -57,15 +58,27 @@ evaluate 语法，零依赖）。任何能操作浏览器、能读本地文件�
 
 ## 📚 知识库覆盖（节选，完整见 [knowledge/INDEX.md](knowledge/INDEX.md)）
 
-| 系列 | 册数 | 状态 |
-| --- | --- | --- |
-| 新编大学英语（第四版） | 8 | 🟨 **综合教程1/2/3+视听说教程1 全书32单元已转录 ✅**，其余待源补录 |
-| 新视野大学英语（第四版/第三版） | 38+8 | 🟩 **新视野（第四版）主力书目全部转录 ✅**：读写教程1-4 全书24单元 + 视听说教程1-4（3845屏）+ 综合训练1-2 · 仅读写1 Unit 5 部分、视听说2 Unit 5 待源 |
-| 新标准大学英语（第二版/第三版） | 16 | ⏳ 源链接就绪 |
-| 新一代大学英语 / E英语 / 大学思辨 / 现代大学英语 / 新交际英语 … | 100+ | ⏳ 源链接就绪 |
-| 理解当代中国 / 高级英语 / 研究生英语 … | 18 | ⏳ 源链接就绪 |
+| 系列 | 索引条目 | 已转录 | 说明 |
+| --- | --- | --- | --- |
+| 新视野大学英语（第四版） | 16 | 10 | 读写1-4、视听说1-4（3851屏）、综合训练1-2；读写1 U5 部分、视听说2 U5 待源 |
+| 新视野大学英语（第三版） | 24 | 3 | 视听说1-3（Unit 1-8） |
+| 新标准大学英语（第三版） | 8 | 4 | 综合1-4（教师用书；综合4 U5 待源） |
+| 新标准大学英语（第二版） | 8 | 3 | 综合1-3（综合4 源为空壳） |
+| 新编大学英语（第四版） | 8 | 4 | 综合1-3、视听说1 |
+| 新未来大学英语 | 8 | 4 | 综合1/2/3A/3B |
+| 现代大学英语 | 10 | 2 | 精读1-2（教师用书） |
+| 理解当代中国系列 | 4 | 2 | 英语读写（10/10）、汉英翻译（缺 U1-2） |
+| 其余 13 个系列 | 114 | 0 | 仅索引答案源链接 |
+| **合计** | **200** | **32** | **32 ✅ / 161 ⏳ / 7 ❌** |
 
 > ⏳ = 答案源文章链接已索引，按 [references/kb-builder.md](references/kb-builder.md) 十分钟补录一本书的单个单元。
+>
+> 口径说明：`knowledge/` 实际转录 **32 本**；`knowledge/INDEX.md` 共 **200 个条目**（32 ✅ / 161 ⏳ / 7 ❌），⏳ 的 161 个目前只有源链接、正文未入库。
+
+## 🔁 提交是两段式的
+
+批量自动作答默认**只填不交**：`MODE=fill python mcp/runner.py` 生成 `mcp/_review.md` 审核单；
+你核对无误后再跑 `MODE=submit python mcp/runner.py`——每条任务会重开页面，逐题确认页面值与审核单一致才点击提交，不一致就标 `gatefail` 跳过。
 
 ## 🧠 设计原则（吸收自 chaoxing / AutoUnipus / UnipusAI 等优秀前作）
 
@@ -103,9 +116,11 @@ A: 看 INDEX.md 是否有源链接；有链接就能按 kb-builder.md 让 AI 现
 │   ├── INDEX.md           # 21 系列 / 约 200 本总索引
 │   └── 新编大学英语（第四版）/…
 ├── tools/                 # 建库流水线：目录爬取 / 图片下载 / 质量校验
-├── mcp/                   # unipus-mcp：浏览器自动化 MCP 服务端（13 工具，可选接入，见 mcp/README.md）
-└── docs/screenshots/      # 界面结构存证
+├── mcp/                   # unipus-mcp：浏览器自动化 MCP 服务端（15 工具）+ 两阶段批量执行器
+└── docs/                  # MAINTAINER.md（接手入口）、UPSTREAM.md（上游调研）、转录队列、设计存档
 ```
+
+> **接手维护？先读 [docs/MAINTAINER.md](docs/MAINTAINER.md)**：架构、数据格式、状态机、改哪里、怎么验证，一页摸清。
 
 ## ⚠️ 免责声明
 
